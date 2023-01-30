@@ -64,39 +64,43 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					throw fastify.httpErrors.badRequest();
 				}
 
-				const users = await fastify.db.users.findMany();
-				const subscribers = users.filter((user) =>
-					user.subscribedToUserIds.some(
-						(subId) => subId === current.id
-					)
-				);
-				await Promise.all(
-					subscribers.map((subscriber) => {
-						return fastify.db.users.change(subscriber.id, {
+				const users = fastify.db.users.findMany({
+					key: 'subscribedToUserIds',
+					inArray: current.id,
+				});
+				const postsToDelete = fastify.db.posts.findMany({
+					key: 'userId',
+					equals: current.id,
+				});
+				const profilesToDelete = fastify.db.profiles.findMany({
+					key: 'userId',
+					equals: current.id,
+				});
+				const [foundUsers, foundPostsToDelete, foundProfilesToDelete] =
+					await Promise.all([users, postsToDelete, profilesToDelete]);
+				const updateSubs = Promise.all(
+					foundUsers.map((user) => {
+						return fastify.db.users.change(user.id, {
 							subscribedToUserIds:
-								subscriber.subscribedToUserIds.filter(
+								user.subscribedToUserIds.filter(
 									(sId) => sId !== current.id
 								),
 						});
 					})
 				);
 
-				const posts = await fastify.db.posts.findMany();
-				const postToDelete = posts.filter(
-					(post) => post.userId === current.id
+				const deletePosts = Promise.all(
+					foundPostsToDelete.map((post) =>
+						fastify.db.posts.delete(post.id)
+					)
 				);
-				await Promise.all(
-					postToDelete.map((post) => fastify.db.posts.delete(post.id))
-				);
-				const profiles = await fastify.db.profiles.findMany();
-				const profilesToDelete = profiles.filter(
-					(profile) => profile.userId === current.id
-				);
-				await Promise.all(
-					profilesToDelete.map((profile) =>
+
+				const deleteProfiles = Promise.all(
+					foundProfilesToDelete.map((profile) =>
 						fastify.db.profiles.delete(profile.id)
 					)
 				);
+				await Promise.all([updateSubs, deletePosts, deleteProfiles]);
 
 				const result = await fastify.db.users.delete(request.params.id);
 				return result;
