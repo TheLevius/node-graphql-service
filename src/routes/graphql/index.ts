@@ -121,7 +121,6 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 							info
 						) => {
 							let dl: any = dataloaders.get(info.fieldNodes);
-
 							if (!dl) {
 								dl = new DataLoader(async (ids: any) => {
 									const rows =
@@ -129,18 +128,14 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 											key: 'userId',
 											equalsAnyOf: ids,
 										});
-
 									const sortedInIdsOrder = ids.map(
 										(id: any) =>
 											rows.filter((p) => p.userId === id)
 									);
-
 									return sortedInIdsOrder;
 								});
-
 								dataloaders.set(info.fieldNodes, dl);
 							}
-
 							return dl.load(user.id);
 							// return await fastify.db.posts.findMany({
 							// 	key: 'userId',
@@ -180,7 +175,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						type: new GraphQLList(PostType),
 						description: 'Posts Table',
 						resolve: async (_, __, { fastify }: MyContext) => {
-							await fastify.db.posts.findMany();
+							return await fastify.db.posts.findMany();
 						},
 					},
 					profiles: {
