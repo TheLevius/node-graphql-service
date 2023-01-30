@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
 import DataLoader = require('dataloader');
-// import { FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import {
 	graphql,
 	GraphQLID,
@@ -13,7 +13,6 @@ import {
 	GraphQLString,
 	GraphQLOutputType,
 } from 'graphql';
-import { UserEntity } from '../../utils/DB/entities/DBUsers';
 import { graphqlBodySchema } from './schema';
 
 const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
@@ -26,6 +25,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 				body: graphqlBodySchema,
 			},
 		},
+
 		async function (request, reply) {
 			const MemberType = new GraphQLObjectType({
 				name: 'MemberType',
@@ -82,9 +82,14 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					},
 					userSubscribedTo: {
 						type: new GraphQLList(UserType),
-						resolve: async (user, _, { fastify: { db } }) => {
-							const userSubscribedToUsers: UserEntity[] =
-								await db.users.findMany({
+						resolve: async (
+							user,
+							_,
+							{ fastify, dataloaders }: MyContext,
+							info
+						) => {
+							const userSubscribedToUsers =
+								await fastify.db.users.findMany({
 									key: 'subscribedToUserIds',
 									inArray: user.id,
 								});
@@ -93,9 +98,14 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					},
 					subscribedToUser: {
 						type: new GraphQLList(UserType),
-						resolve: async (user, __, { fastify: { db } }) => {
-							const userSubscribedToUsers: UserEntity[] =
-								await db.users.findMany({
+						resolve: async (
+							user,
+							__,
+							{ fastify, dataloaders }: MyContext,
+							info
+						) => {
+							const userSubscribedToUsers =
+								await fastify.db.users.findMany({
 									key: 'subscribedToUserIds',
 									inArray: user.id,
 								});
@@ -104,19 +114,53 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					},
 					posts: {
 						type: new GraphQLList(PostType),
-						resolve: async (user, _, { fastify: { db } }) =>
-							await db.posts.findMany({
-								key: 'userId',
-								equals: user.id,
-							}),
+						resolve: async (
+							user,
+							_,
+							{ fastify, dataloaders }: MyContext,
+							info
+						) => {
+							let dl: any = dataloaders.get(info.fieldNodes);
+
+							if (!dl) {
+								dl = new DataLoader(async (ids: any) => {
+									const rows =
+										await fastify.db.posts.findMany({
+											key: 'userId',
+											equalsAnyOf: ids,
+										});
+
+									const sortedInIdsOrder = ids.map(
+										(id: any) =>
+											rows.filter((p) => p.userId === id)
+									);
+
+									return sortedInIdsOrder;
+								});
+
+								dataloaders.set(info.fieldNodes, dl);
+							}
+
+							return dl.load(user.id);
+							// return await fastify.db.posts.findMany({
+							// 	key: 'userId',
+							// 	equals: user.id,
+							// });
+						},
 					},
 					profile: {
 						type: ProfileType,
-						resolve: async (user, _, { fastify: { db } }) =>
-							await db.profiles.findOne({
+						resolve: async (
+							user,
+							_,
+							{ fastify, dataloaders }: MyContext,
+							info
+						) => {
+							return await fastify.db.profiles.findOne({
 								key: 'userId',
 								equals: user.id,
-							}),
+							});
+						},
 					},
 				}),
 			});
@@ -128,65 +172,73 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					users: {
 						type: new GraphQLList(UserType),
 						description: 'Users Table',
-						resolve: async (_, __, { fastify: { db } }) =>
-							await db.users.findMany(),
+						resolve: async (_, __, { fastify }: MyContext) => {
+							return await fastify.db.users.findMany();
+						},
 					},
 					posts: {
 						type: new GraphQLList(PostType),
 						description: 'Posts Table',
-						resolve: async (_, __, { fastify: { db } }) =>
-							await db.posts.findMany(),
+						resolve: async (_, __, { fastify }: MyContext) => {
+							await fastify.db.posts.findMany();
+						},
 					},
 					profiles: {
 						type: new GraphQLList(ProfileType),
 						description: 'Profiles Table',
-						resolve: async (_, __, { fastify: { db } }) =>
-							await db.profiles.findMany(),
+						resolve: async (_, __, { fastify }: MyContext) => {
+							return await fastify.db.profiles.findMany();
+						},
 					},
 					memberTypes: {
 						type: new GraphQLList(MemberType),
 						description: 'Members table',
-						resolve: async (_, __, { fastify: { db } }) =>
-							await db.memberTypes.findMany(),
+						resolve: async (_, __, { fastify }: MyContext) => {
+							return await fastify.db.memberTypes.findMany();
+						},
 					},
 
 					user: {
 						type: UserType,
 						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
-						resolve: async (_, { id }, { fastify: { db } }) =>
-							await db.users.findOne({
+						resolve: async (_, { id }, { fastify }: MyContext) => {
+							return await fastify.db.users.findOne({
 								key: 'id',
 								equals: id,
-							}),
+							});
+						},
 					},
 					post: {
 						type: PostType,
 						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
-						resolve: async (_, { id }, { fastify: { db } }) =>
-							await db.posts.findOne({
+						resolve: async (_, { id }, { fastify }: MyContext) => {
+							return await fastify.db.posts.findOne({
 								key: 'id',
 								equals: id,
-							}),
+							});
+						},
 					},
 					profile: {
 						type: ProfileType,
 						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
-						resolve: async (_, { id }, { fastify: { db } }) =>
-							await db.profiles.findOne({
+						resolve: async (_, { id }, { fastify }: MyContext) => {
+							return await fastify.db.profiles.findOne({
 								key: 'id',
 								equals: id,
-							}),
+							});
+						},
 					},
 					memberType: {
 						type: MemberType,
 						args: {
 							id: { type: new GraphQLNonNull(GraphQLString) },
 						},
-						resolve: async (_, { id }, { fastify: { db } }) =>
-							await db.memberTypes.findOne({
+						resolve: async (_, { id }, { fastify }: MyContext) => {
+							return await fastify.db.memberTypes.findOne({
 								key: 'id',
 								equals: id,
-							}),
+							});
+						},
 					},
 				},
 			});
@@ -282,26 +334,41 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					createUser: {
 						type: UserType,
 						args: { input: { type: CreateUserDTO } },
-						resolve: async (_, { input }, { fastify: { db } }) => {
-							const createdUser = await db.users.create(input);
+						resolve: async (
+							_,
+							{ input },
+							{ fastify }: MyContext
+						) => {
+							const createdUser = await fastify.db.users.create(
+								input
+							);
 							return createdUser;
 						},
 					},
 					createPost: {
 						type: PostType,
 						args: { input: { type: CreatePostDTO } },
-						resolve: async (_, { input }, { fastify: { db } }) => {
-							const createdPost = await db.posts.create(input);
+						resolve: async (
+							_,
+							{ input },
+							{ fastify }: MyContext
+						) => {
+							const createdPost = await fastify.db.posts.create(
+								input
+							);
 							return createdPost;
 						},
 					},
 					createProfile: {
 						type: ProfileType,
 						args: { input: { type: CreateProfileDTO } },
-						resolve: async (_, { input }, { fastify: { db } }) => {
-							const createdProfile = await db.profiles.create(
-								input
-							);
+						resolve: async (
+							_,
+							{ input },
+							{ fastify }: MyContext
+						) => {
+							const createdProfile =
+								await fastify.db.profiles.create(input);
 							return createdProfile;
 						},
 					},
@@ -311,9 +378,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, ...input } },
-							{ fastify: { db } }
+							{ fastify }: MyContext
 						) => {
-							const updatedUser = await db.users.change(
+							const updatedUser = await fastify.db.users.change(
 								id,
 								input
 							);
@@ -326,9 +393,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, ...input } },
-							{ fastify: { db } }
+							{ fastify }: MyContext
 						) => {
-							const updatedPost = await db.posts.change(
+							const updatedPost = await fastify.db.posts.change(
 								id,
 								input
 							);
@@ -341,12 +408,10 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, ...input } },
-							{ fastify: { db } }
+							{ fastify }: MyContext
 						) => {
-							const updatedProfile = await db.profiles.change(
-								id,
-								input
-							);
+							const updatedProfile =
+								await fastify.db.profiles.change(id, input);
 							return updatedProfile;
 						},
 					},
@@ -356,10 +421,10 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, ...input } },
-							{ fastify: { db } }
+							{ fastify }: MyContext
 						) => {
 							const updatedMemberType =
-								await db.memberTypes.change(id, input);
+								await fastify.db.memberTypes.change(id, input);
 							return updatedMemberType;
 						},
 					},
@@ -369,7 +434,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, subscribeToId } },
-							{ fastify }
+							{ fastify }: MyContext
 						) => {
 							const user = await fastify.db.users.findOne({
 								key: 'id',
@@ -395,13 +460,12 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (
 							_,
 							{ input: { id, unsubscribeFromId } },
-							{ fastify }
+							{ fastify }: MyContext
 						) => {
-							const user: UserEntity =
-								await fastify.db.users.findOne({
-									key: 'id',
-									equals: unsubscribeFromId,
-								});
+							const user = await fastify.db.users.findOne({
+								key: 'id',
+								equals: unsubscribeFromId,
+							});
 							if (user === null) {
 								throw fastify.httpErrors.badRequest();
 							}
@@ -424,16 +488,16 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 			});
 
 			const schema = new GraphQLSchema({ query, mutation });
-			// type MyContext = {
-			// 	fastify: FastifyInstance;
-			// 	DataLoader: Map<string, >;
-			// };
+			type MyContext = {
+				fastify: FastifyInstance;
+				dataloaders: WeakMap<object, unknown>;
+			};
 			return await graphql({
 				schema,
 				source: !!request.body?.query
 					? request.body.query!
 					: request.body.mutation!,
-				contextValue: { fastify, DataLoader },
+				contextValue: { fastify, dataloaders: new WeakMap() },
 				variableValues: request.body.variables,
 			});
 		}
