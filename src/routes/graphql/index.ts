@@ -28,7 +28,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 				name: 'MemberType',
 				description: 'MemberType type object',
 				fields: () => ({
-					id: { type: GraphQLID },
+					id: { type: new GraphQLNonNull(GraphQLString) },
 					discount: { type: new GraphQLNonNull(GraphQLInt) },
 					monthPostsLimit: { type: new GraphQLNonNull(GraphQLInt) },
 				}),
@@ -117,60 +117,63 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 						resolve: async (_, __, db: DB) =>
 							await db.users.findMany(),
 					},
-					// posts: {
-					// 	type: new GraphQLList(PostType),
-					// 	description: 'Posts Table',
-					// 	resolve: async (_, __, db: DB) =>
-					// 		await db.posts.findMany(),
-					// },
-					// profiles: {
-					// 	type: new GraphQLList(ProfileType),
-					// 	description: 'Profiles Table',
-					// 	resolve: async (_, __, db: DB) =>
-					// 		await db.profiles.findMany(),
-					// },
-					// memberTypes: {
-					// 	type: new GraphQLList(MemberType),
-					// 	description: 'Members table',
-					// 	resolve: async (_, __, db: DB) =>
-					// 		await db.memberTypes.findMany(),
-					// },
+					posts: {
+						type: new GraphQLList(PostType),
+						description: 'Posts Table',
+						resolve: async (_, __, db: DB) =>
+							await db.posts.findMany(),
+					},
+					profiles: {
+						type: new GraphQLList(ProfileType),
+						description: 'Profiles Table',
+						resolve: async (_, __, db: DB) =>
+							await db.profiles.findMany(),
+					},
+					memberTypes: {
+						type: new GraphQLList(MemberType),
+						description: 'Members table',
+						resolve: async (_, __, db: DB) =>
+							await db.memberTypes.findMany(),
+					},
 
-					// user: {
-					// 	type: new GraphQLNonNull(UserType),
-					// 	resolve: async (_, { id }, db: DB) =>
-					// 		await db.users.findOne({
-					// 			key: 'id',
-					// 			equals: id,
-					// 		}),
-					// },
-					// post: {
-					// 	type: new GraphQLNonNull(PostType),
-					// 	resolve: async (_, { id }, db: DB) =>
-					// 		await db.posts.findOne({
-					// 			key: 'id',
-					// 			equals: id,
-					// 		}),
-					// },
-					// profile: {
-					// 	type: new GraphQLNonNull(ProfileType),
-					// 	resolve: async (_, { id }, db: DB) =>
-					// 		await db.profiles.findOne({
-					// 			key: 'id',
-					// 			equals: id,
-					// 		}),
-					// },
-					// memberType: {
-					// 	type: new GraphQLNonNull(MemberType),
-					// 	args: {
-					// 		id: { type: GraphQLString },
-					// 	},
-					// 	resolve: async (_, { id }, db: DB) =>
-					// 		await db.memberTypes.findOne({
-					// 			key: 'id',
-					// 			equals: id,
-					// 		}),
-					// },
+					user: {
+						type: UserType,
+						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+						resolve: async (_, { id }, db: DB) =>
+							await db.users.findOne({
+								key: 'id',
+								equals: id,
+							}),
+					},
+					post: {
+						type: PostType,
+						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+						resolve: async (_, { id }, db: DB) =>
+							await db.posts.findOne({
+								key: 'id',
+								equals: id,
+							}),
+					},
+					profile: {
+						type: ProfileType,
+						args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+						resolve: async (_, { id }, db: DB) =>
+							await db.profiles.findOne({
+								key: 'id',
+								equals: id,
+							}),
+					},
+					memberType: {
+						type: MemberType,
+						args: {
+							id: { type: new GraphQLNonNull(GraphQLString) },
+						},
+						resolve: async (_, { id }, db: DB) =>
+							await db.memberTypes.findOne({
+								key: 'id',
+								equals: id,
+							}),
+					},
 				},
 			});
 
@@ -233,6 +236,28 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					id: { type: new GraphQLNonNull(GraphQLID) },
 					title: { type: GraphQLString },
 					content: { type: GraphQLString },
+				},
+			});
+			const ChangeMemberTypeDTO = new GraphQLInputObjectType({
+				name: 'ChangeMemberTypeDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLString) },
+					discount: { type: GraphQLInt },
+					monthPostsLimit: { type: GraphQLInt },
+				},
+			});
+			const SubscribeToDTO = new GraphQLInputObjectType({
+				name: 'SubscribeToDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					subscribeToId: { type: new GraphQLNonNull(GraphQLID) },
+				},
+			});
+			const UnsubscribeFromDTO = new GraphQLInputObjectType({
+				name: 'UnsubscribeFromDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					unsubscribeFromId: { type: new GraphQLNonNull(GraphQLID) },
 				},
 			});
 
@@ -309,6 +334,75 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 								input
 							);
 							return updatedProfile;
+						},
+					},
+					changeMemberType: {
+						type: MemberType,
+						args: { input: { type: ChangeMemberTypeDTO } },
+						resolve: async (
+							_,
+							{ input: { id, ...input } },
+							db: DB
+						) => {
+							const updatedMemberType =
+								await db.memberTypes.change(id, input);
+							return updatedMemberType;
+						},
+					},
+					subscribeTo: {
+						type: UserType,
+						args: { input: { type: SubscribeToDTO } },
+						resolve: async (
+							_,
+							{ input: { id, subscribeToId } },
+							db: DB
+						) => {
+							const user = await db.users.findOne({
+								key: 'id',
+								equals: subscribeToId,
+							});
+
+							if (user === null) {
+								throw this.httpErrors.badRequest();
+							}
+							const { subscribedToUserIds } = user;
+							subscribedToUserIds.push(id);
+							const updatedUser = await db.users.change(
+								subscribeToId,
+								{ subscribedToUserIds }
+							);
+							return updatedUser;
+						},
+					},
+
+					unsubscribeFrom: {
+						type: UserType,
+						args: { input: { type: UnsubscribeFromDTO } },
+						resolve: async (
+							_,
+							{ input: { id, unsubscribeFromId } },
+							db: DB
+						) => {
+							const user = await db.users.findOne({
+								key: 'id',
+								equals: unsubscribeFromId,
+							});
+							if (user === null) {
+								throw this.httpErrors.badRequest();
+							}
+							const { subscribedToUserIds } = user;
+							const filteredSubscribedToUserIds =
+								subscribedToUserIds.filter(
+									(userId) => userId !== id
+								);
+							const updatedUser = await db.users.change(
+								unsubscribeFromId,
+								{
+									subscribedToUserIds:
+										filteredSubscribedToUserIds,
+								}
+							);
+							return updatedUser;
 						},
 					},
 				}),
