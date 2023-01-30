@@ -2,6 +2,8 @@ import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-sc
 import {
 	graphql,
 	GraphQLID,
+	GraphQLInputObjectType,
+	GraphQLInt,
 	GraphQLList,
 	GraphQLNonNull,
 	GraphQLObjectType,
@@ -22,50 +24,49 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 			},
 		},
 		async function (request, reply) {
-			// const MemberType = new GraphQLObjectType({
-			// 	name: 'MemberType',
-			// 	description: 'MemberType type object',
-			// 	fields: () => ({
-			// 		id: { type: GraphQLID },
-			// 		discount: { type: new GraphQLNonNull(GraphQLInt) },
-			// 		monthPostsLimit: { type: new GraphQLNonNull(GraphQLInt) },
-			// 	}),
-			// });
+			const MemberType = new GraphQLObjectType({
+				name: 'MemberType',
+				description: 'MemberType type object',
+				fields: () => ({
+					id: { type: GraphQLID },
+					discount: { type: new GraphQLNonNull(GraphQLInt) },
+					monthPostsLimit: { type: new GraphQLNonNull(GraphQLInt) },
+				}),
+			});
 
-			// const PostType = new GraphQLObjectType({
-			// 	name: 'Post',
-			// 	description: 'Post type object',
-			// 	fields: {
-			// 		id: { type: GraphQLID },
-			// 		title: { type: new GraphQLNonNull(GraphQLString) },
-			// 		content: { type: new GraphQLNonNull(GraphQLString) },
-			// 		userId: { type: new GraphQLNonNull(GraphQLString) },
-			// 	},
-			// });
-			// const ProfileType = new GraphQLObjectType({
-			// 	name: 'Profile',
-			// 	description: 'Profile type object',
-			// 	fields: () => ({
-			// 		id: { type: new GraphQLNonNull(GraphQLID) },
-			// 		avatar: { type: new GraphQLNonNull(GraphQLString) },
-			// 		sex: { type: new GraphQLNonNull(GraphQLString) },
-			// 		birthday: { type: new GraphQLNonNull(GraphQLString) },
-			// 		country: { type: new GraphQLNonNull(GraphQLString) },
-			// 		street: { type: new GraphQLNonNull(GraphQLString) },
-			// 		city: { type: new GraphQLNonNull(GraphQLString) },
-			// 		memberTypeId: { type: new GraphQLNonNull(GraphQLString) },
-			// 		userId: { type: new GraphQLNonNull(GraphQLString) },
-			// 		memberType: {
-			// 			type: MemberType,
-			// 			description: 'MemberType object',
-			// 			resolve: (profile) =>
-			// 				fastify.db.memberTypes.findOne({
-			// 					key: 'id',
-			// 					equals: profile.memberTypeId,
-			// 				}),
-			// 		},
-			// 	}),
-			// });
+			const PostType = new GraphQLObjectType({
+				name: 'Post',
+				fields: {
+					id: { type: GraphQLID },
+					title: { type: new GraphQLNonNull(GraphQLString) },
+					content: { type: new GraphQLNonNull(GraphQLString) },
+					userId: { type: new GraphQLNonNull(GraphQLString) },
+				},
+			});
+			const ProfileType = new GraphQLObjectType({
+				name: 'Profile',
+				description: 'Profile type object',
+				fields: () => ({
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					avatar: { type: new GraphQLNonNull(GraphQLString) },
+					sex: { type: new GraphQLNonNull(GraphQLString) },
+					birthday: { type: new GraphQLNonNull(GraphQLString) },
+					country: { type: new GraphQLNonNull(GraphQLString) },
+					street: { type: new GraphQLNonNull(GraphQLString) },
+					city: { type: new GraphQLNonNull(GraphQLString) },
+					memberTypeId: { type: new GraphQLNonNull(GraphQLString) },
+					userId: { type: new GraphQLNonNull(GraphQLString) },
+					memberType: {
+						type: MemberType,
+						description: 'MemberType object',
+						resolve: (profile) =>
+							fastify.db.memberTypes.findOne({
+								key: 'id',
+								equals: profile.memberTypeId,
+							}),
+					},
+				}),
+			});
 			const UserType = new GraphQLObjectType({
 				name: 'User',
 				fields: () => ({
@@ -76,80 +77,35 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 					subscribedToUserIds: {
 						type: new GraphQLList(GraphQLString),
 					},
-					// posts: {
-					// 	type: new GraphQLList(PostType),
-					// 	resolve: async (user, _, db: DB) =>
-					// 		await db.posts.findMany({
-					// 			key: 'userId',
-					// 			equals: user.id,
-					// 		}),
-					// },
-					// profile: {
-					// 	type: ProfileType,
-					// 	resolve: async (user, _, db: DB) =>
-					// 		await db.profiles.findOne({
-					// 			key: 'userId',
-					// 			equals: user.id,
-					// 		}),
-					// },
-					// userSubscribedToProfiles: {
-					// 	type: new GraphQLList(ProfileType),
-					// 	resolve: async (currentUser, __, db: DB) => {
-					// 		const userSubscribedToUsers =
-					// 			await db.users.findMany({
-					// 				key: 'subscribedToUserIds',
-					// 				inArray: currentUser.id,
-					// 			});
-					// 		const userSubscribedToProfiles = await Promise.all(
-					// 			userSubscribedToUsers.map((user) =>
-					// 				db.profiles.findOne({
-					// 					key: 'userId',
-					// 					equals: user.id,
-					// 				})
-					// 			)
-					// 		);
-					// 		return userSubscribedToProfiles;
-					// 	},
-					// },
-					// subscribedToUserPosts: {
-					// 	type: new GraphQLList(PostType),
-					// 	resolve: async (currentUser, __, db: DB) => {
-					// 		const matrixUsersPosts = await Promise.all(
-					// 			currentUser.subscribedToUserIds.map(
-					// 				(id: string) =>
-					// 					db.posts.findMany({
-					// 						key: 'userId',
-					// 						equals: id,
-					// 					})
-					// 			)
-					// 		);
-					// 		return matrixUsersPosts.flat(1);
-					// 	},
-					// },
+					userSubscribedToIds: {
+						type: new GraphQLList(GraphQLString),
+						resolve: async (user, _, db: DB) => {
+							const userSubscribedToUsers =
+								await db.users.findMany({
+									key: 'subscribedToUserIds',
+									inArray: user.id,
+								});
+							return userSubscribedToUsers.map((user) => user.id);
+						},
+					},
+					posts: {
+						type: new GraphQLList(PostType),
+						resolve: async (user, _, db: DB) =>
+							await db.posts.findMany({
+								key: 'userId',
+								equals: user.id,
+							}),
+					},
+					profile: {
+						type: ProfileType,
+						resolve: async (user, _, db: DB) =>
+							await db.profiles.findOne({
+								key: 'userId',
+								equals: user.id,
+							}),
+					},
 				}),
 			});
-
-			// const CreatePost = new GraphQLObjectType({
-			// 	name: 'createPost type',
-			// 	fields: () => ({
-			// 		title: { type: new GraphQLNonNull(GraphQLString) },
-			// 		content: { type: new GraphQLNonNull(GraphQLString) },
-			// 		userId: { type: new GraphQLNonNull(GraphQLID) },
-			// 	}),
-			// });
-			// const CreateProfile = new GraphQLObjectType({
-			// 	name: 'createProfile type',
-			// 	fields: () => ({
-			// 		avatar: { type: new GraphQLNonNull(GraphQLString) },
-			// 		sex: { type: new GraphQLNonNull(GraphQLString) },
-			// 		birthday: { type: new GraphQLNonNull(GraphQLString) },
-			// 		country: { type: new GraphQLNonNull(GraphQLString) },
-			// 		street: { type: new GraphQLNonNull(GraphQLString) },
-			// 		city: { type: new GraphQLNonNull(GraphQLString) },
-			// 		userId: { type: new GraphQLNonNull(GraphQLString) },
-			// 		memberTypeId: { type: new GraphQLNonNull(GraphQLString) },
-			// 	}),
-			// });
 
 			const query = new GraphQLObjectType({
 				name: 'Query',
@@ -218,22 +174,67 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 				},
 			});
 
-			// const CreateUser = new GraphQLObjectType({
-			// 	name: 'CreateUser type',
-			// 	fields: {
-			// 		firstName: { type: new GraphQLNonNull(GraphQLString) },
-			// 		lastName: { type: new GraphQLNonNull(GraphQLString) },
-			// 		email: { type: new GraphQLNonNull(GraphQLString) },
-			// 	},
-			// });
-			// const inputCreateUser = new GraphQLInputObjectType({
-			// 	name: 'CreateUserInput',
-			// 	fields: () => ({
-			// 		firstName: { type: new GraphQLNonNull(GraphQLString) },
-			// 		lastName: { type: new GraphQLNonNull(GraphQLString) },
-			// 		email: { type: new GraphQLNonNull(GraphQLString) },
-			// 	}),
-			// });
+			const CreateUserDTO = new GraphQLInputObjectType({
+				name: 'CreateUserDTO',
+				fields: {
+					firstName: { type: new GraphQLNonNull(GraphQLString) },
+					lastName: { type: new GraphQLNonNull(GraphQLString) },
+					email: { type: new GraphQLNonNull(GraphQLString) },
+				},
+			});
+			const CreateProfileDTO = new GraphQLInputObjectType({
+				name: 'CreateProfileDTO',
+				fields: () => ({
+					avatar: { type: new GraphQLNonNull(GraphQLString) },
+					sex: { type: new GraphQLNonNull(GraphQLString) },
+					birthday: { type: new GraphQLNonNull(GraphQLString) },
+					country: { type: new GraphQLNonNull(GraphQLString) },
+					street: { type: new GraphQLNonNull(GraphQLString) },
+					city: { type: new GraphQLNonNull(GraphQLString) },
+					userId: { type: new GraphQLNonNull(GraphQLID) },
+					memberTypeId: { type: new GraphQLNonNull(GraphQLString) },
+				}),
+			});
+			const CreatePostDTO = new GraphQLInputObjectType({
+				name: 'CreatePostDTO',
+				fields: {
+					title: { type: new GraphQLNonNull(GraphQLString) },
+					content: { type: new GraphQLNonNull(GraphQLString) },
+					userId: { type: new GraphQLNonNull(GraphQLID) },
+				},
+			});
+
+			const ChangeUserDTO = new GraphQLInputObjectType({
+				name: 'ChangeUserDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					firstName: { type: GraphQLString },
+					lastName: { type: GraphQLString },
+					email: { type: GraphQLString },
+					subscribedToUserIds: { type: new GraphQLList(GraphQLID) },
+				},
+			});
+			const ChangeProfileDTO = new GraphQLInputObjectType({
+				name: 'ChangeProfileDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					avatar: { type: GraphQLString },
+					sex: { type: GraphQLString },
+					birthday: { type: GraphQLString },
+					country: { type: GraphQLString },
+					street: { type: GraphQLString },
+					city: { type: GraphQLString },
+					memberTypeId: { type: GraphQLString },
+				},
+			});
+			const ChangePostDTO = new GraphQLInputObjectType({
+				name: 'ChangePostDTO',
+				fields: {
+					id: { type: new GraphQLNonNull(GraphQLID) },
+					title: { type: GraphQLString },
+					content: { type: GraphQLString },
+				},
+			});
 
 			const mutation = new GraphQLObjectType({
 				name: 'Mutation',
@@ -241,88 +242,75 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 				fields: () => ({
 					createUser: {
 						type: UserType,
-						args: {
-							firstName: {
-								type: new GraphQLNonNull(GraphQLString),
-							},
-							lastName: {
-								type: new GraphQLNonNull(GraphQLString),
-							},
-							email: { type: new GraphQLNonNull(GraphQLString) },
-						},
-						resolve: async (
-							_,
-							{ firstName, lastName, email },
-							db: DB
-						) => {
-							const createdUser = await db.users.create({
-								firstName,
-								lastName,
-								email,
-							});
-
+						args: { input: { type: CreateUserDTO } },
+						resolve: async (_, { input }, db: DB) => {
+							const createdUser = await db.users.create(input);
 							return createdUser;
 						},
 					},
-					// createPost: {
-					// 	type: CreatePost,
-					// 	args: {
-					// 		title: { type: GraphQLString },
-					// 		content: { type: GraphQLString },
-					// 		userId: { type: GraphQLID },
-					// 	},
-					// 	resolve: async (
-					// 		_,
-					// 		{ title, content, userId },
-					// 		db: DB
-					// 	) => {
-					// 		const createdPost = await db.posts.create({
-					// 			title,
-					// 			content,
-					// 			userId,
-					// 		});
-					// 		return createdPost;
-					// 	},
-					// },
-					// createProfile: {
-					// 	type: CreateProfile,
-					// 	args: {
-					// 		avatar: { type: GraphQLString },
-					// 		sex: { type: GraphQLString },
-					// 		birthday: { type: GraphQLString },
-					// 		country: { type: GraphQLString },
-					// 		street: { type: GraphQLString },
-					// 		city: { type: GraphQLString },
-					// 		userId: { type: GraphQLString },
-					// 		memberTypeId: { type: GraphQLString },
-					// 	},
-					// 	resolve: async (
-					// 		_,
-					// 		{
-					// 			avatar,
-					// 			sex,
-					// 			birthday,
-					// 			country,
-					// 			street,
-					// 			city,
-					// 			userId,
-					// 			memberTypeId,
-					// 		},
-					// 		db: DB
-					// 	) => {
-					// 		const createdProfile = await db.profiles.create({
-					// 			avatar,
-					// 			sex,
-					// 			birthday,
-					// 			country,
-					// 			street,
-					// 			city,
-					// 			userId,
-					// 			memberTypeId,
-					// 		});
-					// 		return createdProfile;
-					// 	},
-					// },
+					createPost: {
+						type: PostType,
+						args: { input: { type: CreatePostDTO } },
+						resolve: async (_, { input }, db: DB) => {
+							const createdPost = await db.posts.create(input);
+							return createdPost;
+						},
+					},
+					createProfile: {
+						type: ProfileType,
+						args: { input: { type: CreateProfileDTO } },
+						resolve: async (_, { input }, db: DB) => {
+							const createdProfile = await db.profiles.create(
+								input
+							);
+							return createdProfile;
+						},
+					},
+					changeUser: {
+						type: UserType,
+						args: { input: { type: ChangeUserDTO } },
+						resolve: async (
+							_,
+							{ input: { id, ...input } },
+							db: DB
+						) => {
+							const updatedUser = await db.users.change(
+								id,
+								input
+							);
+							return updatedUser;
+						},
+					},
+					changePost: {
+						type: PostType,
+						args: { input: { type: ChangePostDTO } },
+						resolve: async (
+							_,
+							{ input: { id, ...input } },
+							db: DB
+						) => {
+							const updatedPost = await db.posts.change(
+								id,
+								input
+							);
+							return updatedPost;
+						},
+					},
+					changeProfile: {
+						type: ProfileType,
+						args: { input: { type: ChangeProfileDTO } },
+						resolve: async (
+							_,
+							{ input: { id, ...input } },
+							db: DB
+						) => {
+							const updatedProfile = await db.profiles.change(
+								id,
+								input
+							);
+							return updatedProfile;
+						},
+					},
 				}),
 			});
 
