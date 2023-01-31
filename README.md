@@ -9,27 +9,106 @@ All dynamic values should be sent via "variables" field.
 If the properties of the entity are not specified, then return the id of it.  
 `userSubscribedTo` - these are users that the current user is following.  
 `subscribedToUser` - these are users who are following the current user.  
-   
-   * Get gql requests:  
-   2.1. Get users, profiles, posts, memberTypes - 4 operations in one query.  
-   2.2. Get user, profile, post, memberType by id - 4 operations in one query.  
-   2.3. Get users with their posts, profiles, memberTypes.  
-   2.4. Get user by id with his posts, profile, memberType.  
-   2.5. Get users with their `userSubscribedTo`, profile.  
-   2.6. Get user by id with his `subscribedToUser`, posts.  
-   2.7. Get users with their `userSubscribedTo`, `subscribedToUser` (additionally for each user in `userSubscribedTo`, `subscribedToUser` add their `userSubscribedTo`, `subscribedToUser`).  
-   * Create gql requests:   
-   2.8. Create user.  
-   2.9. Create profile.  
-   2.10. Create post.  
-   2.11. [InputObjectType](https://graphql.org/graphql-js/type/#graphqlinputobjecttype) for DTOs.  
-   * Update gql requests:  
-   2.12. Update user.  
-   2.13. Update profile.  
-   2.14. Update post.  
-   2.15. Update memberType.  
-   2.16. Subscribe to; unsubscribe from.  
-   2.17. [InputObjectType](https://graphql.org/graphql-js/type/#graphqlinputobjecttype) for DTOs.  
+
+## Get gql requests:  
+
+2.1. Get users, profiles, posts, memberTypes - 4 operations in one query.
+
+`query { users {id, firstName, lastName, email, subscribedToUserIds, subscribedToUser{ id, email}, userSubscribedTo{ id, email}}, posts{id, title, content, userId}, profiles {id, avatar, sex, street, userId, memberType {id, discount, monthPostsLimit}}, memberTypes{id, discount, monthPostsLimit}}`
+
+2.2. Get user, profile, post, memberType by id - 4 operations in one query.
+
+`query { user(id: "________-____-____-____-____________") {id, firstName, lastName, email, subscribedToUserIds } profile(id: "________-____-____-____-____________") {id, avatar, sex, birthday, country, street, city, memberType{id}}, post(id: "________-____-____-____-____________") {id, title, content, userId}, memberType(id: "basic") {id, discount, monthPostsLimit} }`
+
+2.3. Get users with their posts, profiles, memberTypes.  
+
+`query { users {id, firstName, lastName, email, subscribedToUserIds, posts {id, title, content, userId}, profile{ id, avatar, sex, birthday, country, street, city, memberType{id, discount, monthPostsLimit}}}}`
+
+2.4. Get user by id with his posts, profile, memberType.
+
+`query { user(id: "________-____-____-____-____________") {id, firstName, lastName, email, subscribedToUserIds, posts {id, title, content, userId},  profile{ id, avatar, sex, birthday, country, street, city, memberType{id, discount, monthPostsLimit}}} }`
+
+2.5. Get users with their `userSubscribedTo`, profile. 
+
+`query {users{id, firstName, lastName, email, userSubscribedTo{ id, firstName, lastName, email}, profile{id, avatar, sex, birthday, country, street, city, memberTypeId}}}`
+
+2.6. Get user by id with his `subscribedToUser`, posts.
+
+`query { user (id: "________-____-____-____-____________") {id, firstName, lastName, email, subscribedToUser{id, firstName, lastName, email}, post {id, title, content, userId}} }`
+
+
+2.7. Get users with their `userSubscribedTo`, `subscribedToUser` (additionally for each user in `userSubscribedTo`, `subscribedToUser` add their `userSubscribedTo`, `subscribedToUser`).  
+
+`query { users {id, subscribedToUser { id, userSubscribedTo{id } }, userSubscribedTo { id, userSubscribedTo { id} }} }`
+
+## Create gql requests:
+
+2.8. Create user.  
+`mutation($createUserDTO: CreateUserDTO!) { createUser(input: $createUserDTO) {id, firstName, lastName, email} }`
+
+CreateUserDTO!:
+`{ "firstName": "someFirstName", "lastName": "someLastName", "email": "some@mail.any" }`
+
+2.9. Create profile.  
+
+`mutation($createProfileDTO: CreateProfileDTO!) { createProfile(input: $createProfileDTO) {id, avatar, sex, birthday, country, street, city memberTypeId} }`
+
+CreateProfileDTO!:
+`{ "avatar": "someAvatarLink", "sex": "yep", "birthday": "someDate", "country": "SomeCountry", "street": "someStreet", "city": "SomeCity", "userId": "________-____-____-____-____________", "memberTypeId": "basic" }`
+
+
+2.10. Create post.
+
+`mutation($createPostDTO: CreatePostDTO!) { createPost(input: $createPostDTO) { id, title, content, userId } }`
+
+CreatePostDTO!:
+`{ "title": "someTitle", "content": "someContent", "userId": "________-____-____-____-____________" }`
+
+2.11. [InputObjectType](https://graphql.org/graphql-js/type/#graphqlinputobjecttype) for DTOs.  
+
+## Update gql requests:
+
+2.12. Update user.
+
+`mutation($changeUserDTO: ChangeUserDTO) { changeUser(input: $changeUserDTO) { id, firstName, lastName, email, subscribedToUserIds } }`
+
+ChangeUserDTO:
+`{"id": "210a9b7b-b599-48e8-9ef8-2f12922edb03", "firstName": "anotherFirstName", "lastName": "anotherLastName", "email": "another@mail.any",  "subscribedToUserIds": [ "________-____-____-____-____________" ] } }`
+
+2.13. Update profile.
+`mutation ($changeProfileDTO: ChangeProfileDTO) { changeProfile(input: $changeProfileDTO) { id avatar sex birthday country street city userId memberTypeId } }`
+
+ChangeProfileDTO:
+`{ "id": "________-____-____-____-____________", "avatar": "anotherlinktoavatar", "sex": "fe-male", "birthday": "__.__.____", "country": "SomeCountry", "street":  "AnotherStreet", "city": "AnotherCity", "memberTypeId": "basic" }`
+
+2.14. Update post.
+`mutation ($changePostDTO: ChangePostDTO) { changePost(input: $changePostDTO) { id, title, content, userId } }`
+
+ChangePostDTO:
+`{ "id": "________-____-____-____-____________", "title": "anotherTitle", "content": "anotherContent" }`
+
+2.15. Update memberType.
+
+`mutation ($changeMemberTypeDTO: ChangeMemberTypeDTO) { changeMemberType(input: $changeMemberTypeDTO) { id discount monthPostsLimit } }`
+
+ChangeMemberTypeDTO:
+`{ "id": "basic", "discount": 20, "monthPostsLimit": 30 }`
+
+2.16. Subscribe to; unsubscribe from.
+
+SubscribeTo: 
+`mutation ($subscribeToDTO: SubscribeToDTO) { subscribeTo(input: $subscribeToDTO) { id, subscribedToUserIds, userSubscribedTo { id, firstName} } }`
+
+SubscribeToDTO:
+`{ "id": "________-____-____-____-____________", "subscribeToId": "________-____-____-____-____________" }`
+
+UnsubscribeFrom:
+`mutation ($unsubscribeFromDTO: UnsubscribeFromDTO) { unsubscribeFrom(input: $unsubscribeFromDTO) { id, subscribedToUserIds, userSubscribedTo { id } } }`
+
+UnsubscribeFromDTO
+`{ "id": "________-____-____-____-____________", "unsubscribeFromId": "________-____-____-____-____________" }`
+
+2.17. [InputObjectType](https://graphql.org/graphql-js/type/#graphqlinputobjecttype) for DTOs.  
 
 3. Solve `n+1` graphql problem with [dataloader](https://www.npmjs.com/package/dataloader) package in all places where it should be used.  
    You can use only one "findMany" call per loader to consider this task completed.  
